@@ -4,7 +4,7 @@ def get_deepseek_result(text):
     """
     使用 OpenAI SDK 访问 DeepSeek API。
     """
-    api_key = "sk-92d81acf39d541dc9368205178f9b153"  # 替换为你的 DeepSeek API Key
+    api_key = "Your API"  # 替换为你的 DeepSeek API Key
     base_url = "https://api.deepseek.com"
     client = OpenAI(api_key=api_key, base_url=base_url)
     try:
@@ -64,3 +64,4 @@ except KeyboardInterrupt:
     driver.quit()
 except Exception as e:
     print(f"发生错误: {str(e)}")
+
