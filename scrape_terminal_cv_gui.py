@@ -32,14 +32,26 @@ class ScrapeTerminalCVGUI:
         tk.Entry(frame, textvariable=self.api_key, width=40, show='*').grid(row=0, column=1, padx=5)
         tk.Label(frame, text="Start URL:").grid(row=0, column=2, padx=(20,0), sticky='w')
         tk.Entry(frame, textvariable=self.start_url, width=40).grid(row=0, column=3, padx=5)
-        # Second row: Auto-click checkbox and Start button
-        tk.Checkbutton(frame, text="Enable Auto-Clicking", variable=self.auto_click, onvalue=True, offvalue=False).grid(row=1, column=0, columnspan=2, sticky='w', pady=10)
+        # Second row: Auto-click checkbox, Stop button, Start button
+        tk.Checkbutton(frame, text="Enable Auto-Clicking", variable=self.auto_click, onvalue=True, offvalue=False).grid(row=1, column=0, columnspan=1, sticky='w', pady=10)
+        tk.Button(frame, text="Stop", command=self.stop_browser, width=10, height=2, bg='#F44336', fg='white', font=('Arial', 12, 'bold')).grid(row=1, column=1, pady=10, padx=(0, 10))
         tk.Button(frame, text="Start", command=self.start_all, width=15, height=2, bg='#4CAF50', fg='white', font=('Arial', 12, 'bold')).grid(row=1, column=2, columnspan=2, pady=10)
         # Expand columns for better layout
         frame.grid_columnconfigure(1, weight=1)
         frame.grid_columnconfigure(3, weight=1)
         self.text_widget = ScrolledText(self.root, state='disabled', font=('Consolas', 10), height=25)
         self.text_widget.pack(expand=True, fill='both', padx=10, pady=10)
+    def stop_browser(self):
+        """Stops the current browser session properly."""
+        if self.driver:
+            try:
+                self.driver.quit()
+                self.update_terminal("[INFO] Browser session stopped.")
+            except Exception as e:
+                self.update_terminal(f"[ERROR] Failed to stop browser: {e}")
+            self.driver = None
+        else:
+            self.update_terminal("[INFO] No browser session to stop.")
 
     def start_all(self):
         url = self.start_url.get().strip()
@@ -201,59 +213,3 @@ class ScrapeTerminalCVGUI:
 if __name__ == "__main__":
     app = ScrapeTerminalCVGUI()
     app.root.mainloop()
-
-    def get_xpath_for_element(self, element):
-        # Helper to get XPath for a BeautifulSoup element
-        path = ''
-        current = element
-        while current and current.name:
-            siblings = [sib for sib in current.parent.find_all(current.name, recursive=False)] if current.parent else []
-            if siblings and len(siblings) > 1:
-                idx = siblings.index(current) + 1
-                path = f'/{current.name}[{idx}]' + path
-            else:
-                path = f'/{current.name}' + path
-            current = current.parent
-        return f'.{path}' if path else None
-
-    def run(self):
-        self.start_browser()
-        try:
-            while True:
-                time.sleep(3)
-                html = self.driver.page_source
-                soup = BeautifulSoup(html, 'html.parser')
-                for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
-                    script.decompose()
-                text = soup.get_text()
-                lines = (line.strip() for line in text.splitlines())
-                chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-                text = '\n'.join(chunk for chunk in chunks if chunk)
-                if text != self.last_text:
-                    print(f"\n页面内容已更新:\n" + "-"*50)
-                    # If the page has <h2 class='feedback-header correct'>Sorry, incorrect...</h2>, override DeepSeek result to 'got it'
-                    feedback_h2 = soup.find('h2', class_='feedback-header correct')
-                    if feedback_h2 and 'sorry, incorrect' in feedback_h2.get_text(strip=True).lower():
-                        result = 'got it'
-                        print("检测到<h2 class='feedback-header correct'>Sorry, incorrect...</h2>，自动输出 got it")
-                    elif 'sorry, incorrect' in text.lower():
-                        result = 'got it'
-                        print("检测到'Sorry, incorrect'，自动输出 got it")
-                    else:
-                        result = get_deepseek_result(text)
-                    print("DeepSeek API 响应:")
-                    print(result)
-                    self.find_and_click_option(result)
-                    self.last_text = text
-        except KeyboardInterrupt:
-            print("\n已停止抓取，关闭浏览器。")
-            self.driver.quit()
-        except Exception as e:
-            print(f"发生错误: {str(e)}")
-
-if __name__ == "__main__":
-    url = "https://www.ixl.com/ela/grade-10/identify-the-narrative-point-of-view"  # 可修改为你想抓取的网址
-    # 如有需要，指定msedgedriver.exe路径
-    edgedriver_path = None  # 例如 r"C:/path/to/msedgedriver.exe"
-    scraper = ScrapeTerminalCV(url, edgedriver_path=edgedriver_path)
-    scraper.run()
